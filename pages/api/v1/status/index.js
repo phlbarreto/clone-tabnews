@@ -1,5 +1,12 @@
+import { createRouter } from "next-connect";
 import database from "/infra/database.js";
-import { InternalServerError } from "infra/errors";
+import controller from "infra/controller";
+
+const router = createRouter();
+
+router.get(getHandler);
+
+export default router.handler(controller.errorsHandler);
 
 async function getVersionDb() {
   const result = await database.query("SELECT version();");
@@ -24,31 +31,20 @@ async function getConnectionsActiveDb() {
   return connections;
 }
 
-async function status(req, res) {
-  try {
-    const updated_at = new Date().toISOString();
-    const version = await getVersionDb();
-    const max_connections = await getMaxConnectionsDb();
-    const connections = await getConnectionsActiveDb();
+async function getHandler(req, res) {
+  const updated_at = new Date().toISOString();
+  const version = await getVersionDb();
+  const max_connections = await getMaxConnectionsDb();
+  const connections = await getConnectionsActiveDb();
 
-    res.status(200).json({
-      updated_at,
-      dependencies: {
-        database: {
-          version,
-          max_connections,
-          opened_connections: connections,
-        },
+  res.status(200).json({
+    updated_at,
+    dependencies: {
+      database: {
+        version,
+        max_connections,
+        opened_connections: connections,
       },
-    });
-  } catch (error) {
-    const publicErrorObject = new InternalServerError({
-      cause: error,
-    });
-
-    console.log("\n Erro no controller do status");
-    res.status(500).json(publicErrorObject);
-  }
+    },
+  });
 }
-
-export default status;
