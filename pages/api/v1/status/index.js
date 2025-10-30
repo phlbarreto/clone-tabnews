@@ -1,4 +1,5 @@
 import database from "/infra/database.js";
+import { InternalServerError } from "infra/errors";
 
 async function getVersionDb() {
   const result = await database.query("SELECT version();");
@@ -24,21 +25,30 @@ async function getConnectionsActiveDb() {
 }
 
 async function status(req, res) {
-  const updated_at = new Date().toISOString();
-  const version = await getVersionDb();
-  const max_connections = await getMaxConnectionsDb();
-  const connections = await getConnectionsActiveDb();
+  try {
+    const updated_at = new Date().toISOString();
+    const version = await getVersionDb();
+    const max_connections = await getMaxConnectionsDb();
+    const connections = await getConnectionsActiveDb();
 
-  res.status(200).json({
-    updated_at,
-    dependencies: {
-      database: {
-        version,
-        max_connections,
-        opened_connections: connections,
+    res.status(200).json({
+      updated_at,
+      dependencies: {
+        database: {
+          version,
+          max_connections,
+          opened_connections: connections,
+        },
       },
-    },
-  });
+    });
+  } catch (error) {
+    const publicErrorObject = new InternalServerError({
+      cause: error,
+    });
+
+    console.log("\n Erro no controller do status");
+    res.status(500).json(publicErrorObject);
+  }
 }
 
 export default status;
